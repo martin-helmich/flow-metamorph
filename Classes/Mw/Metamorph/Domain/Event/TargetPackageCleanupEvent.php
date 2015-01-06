@@ -1,10 +1,6 @@
 <?php
 namespace Mw\Metamorph\Domain\Event;
 
-
-class TargetPackageCleanupEvent extends AbstractTargetPackageEvent
-{
-
-
+class TargetPackageCleanupEvent extends AbstractTargetPackageEvent {
 
 }
