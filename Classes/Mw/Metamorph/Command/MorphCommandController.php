@@ -19,9 +19,12 @@ use Mw\Metamorph\Logging\LoggingWrapper;
 use Symfony\Component\Console\Helper\FormatterHelper;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\ConsoleOutput as SymfonyConsoleOutput;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Cli\CommandController;
+use TYPO3\Flow\Object\DependencyInjection\DependencyProxy;
 
 /**
  * @Flow\Scope("singleton")
@@ -46,8 +49,18 @@ class MorphCommandController extends CommandController {
 	 */
 	protected $loggingWrapper;
 
+	/**
+	 * @var SymfonyConsoleOutput
+	 * @Flow\Inject(lazy=FALSE)
+	 */
+	protected $console;
+
 	private function initializeLogging() {
-		$this->loggingWrapper->setOutput(new DecoratedOutput($this->output));
+		// Workaround; apparently, lazy dependency injection cannot be switched off here (perhaps a bug in Flow?)
+		if ($this->console instanceof DependencyProxy) {
+			$this->console->write('');
+		}
+		$this->loggingWrapper->setOutput(new DecoratedOutput($this->console));
 	}
 
 	/**
@@ -61,7 +74,7 @@ class MorphCommandController extends CommandController {
 		$this->initializeLogging();
 
 		$input  = new ArrayInput([]);
-		$output = new DecoratedOutput($this->output);
+		$output = new DecoratedOutput($this->console);
 
 		$data = new MorphCreationDto();
 
@@ -81,26 +94,30 @@ class MorphCommandController extends CommandController {
 	/**
 	 * List available morphs.
 	 *
+	 * @param bool $quiet Set this flag to generate less verbose (and machine-readable) output.
 	 * @return void
 	 */
-	public function listCommand() {
+	public function listCommand($quiet = FALSE) {
 		$this->initializeLogging();
 		$morphs = $this->morphConfigurationRepository->findAll();
 
 		if (count($morphs)) {
-			$this->outputLine('Found <comment>%d</comment> morph configurations:', [count($morphs)]);
-			$this->outputLine();
+			$table = new Table($this->console);
+			$table->setHeaders(['Name', 'Source directory']);
 
 			foreach ($morphs as $morph) {
-				$this->outputFormatted($morph->getName(), [], 4);
+				$table->addRow([$morph->getName(), $morph->getSourceDirectory()]);
 			}
 
-			$this->outputLine();
-		} else {
+			if ($quiet) {
+				$table->setStyle('compact');
+			}
+
+			$table->render();
+		} elseif (!$quiet) {
 			$this->outputLine('Found <comment>no</comment> morph configurations.');
 			$this->outputLine('Use <comment>./flow morph:create</comment> to create a morph configuration.');
 		}
-
 	}
 
 	/**
@@ -123,16 +140,15 @@ class MorphCommandController extends CommandController {
 		}
 
 		if (TRUE === $reset) {
-			$this->morphService->reset($morph, $this->output);
+			$this->morphService->reset($morph, $this->console);
 		}
 
 		try {
-			$this->morphService->execute($morph, new DecoratedOutput($this->output));
+			$this->morphService->execute($morph, new DecoratedOutput($this->console));
 		} catch (HumanInterventionRequiredException $e) {
 		} catch (\Exception $e) {
-			$this->output->writeln('<error>  UNCAUGHT EXCEPTION  </error>');
-			$this->output->writeln('  ' . get_class($e) . ': ' . $e->getMessage());
-			$this->output->write('<debug>' . $e->getTraceAsString() . '</debug>' . "\n");
+			$this->output->outputLine('<error>  UNCAUGHT EXCEPTION  </error>');
+			$this->output->outputLine('  ' . get_class($e) . ': ' . $e->getMessage());
 			$this->sendAndExit(1);
 		}
 	}

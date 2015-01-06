@@ -10,7 +10,9 @@ use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Package\PackageManagerInterface;
 use TYPO3\Flow\Utility\Files;
 
-class CreateResources extends AbstractTransformation {
+class CreateResources extends AbstractTransformation implements Progressible {
+
+	use ProgressibleTrait;
 
 	/**
 	 * @var PackageManagerInterface
@@ -20,6 +22,11 @@ class CreateResources extends AbstractTransformation {
 
 	public function execute(MorphConfiguration $configuration, MorphExecutionState $state, OutputInterface $out) {
 		$packageResources = [];
+		$this->startProgress(
+			'Migrating resources',
+			count($configuration->getResourceMappingContainer()->getResourceMappings())
+		);
+
 		foreach ($configuration->getResourceMappingContainer()->getResourceMappings() as $resourceMapping) {
 			$package = $this->packageManager->getPackage($resourceMapping->getPackage());
 
@@ -35,7 +42,10 @@ class CreateResources extends AbstractTransformation {
 				$packageResources[$resourceMapping->getPackage()] = [];
 			}
 			$packageResources[$resourceMapping->getPackage()][] = $resourceMapping->getTargetFile();
+			$this->advanceProgress();
 		}
+
+		$this->finishProgress();
 
 		foreach ($packageResources as $packageKey => $files) {
 			$this->emitFilesModifiedEvent(

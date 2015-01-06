@@ -15,34 +15,32 @@ use PhpParser\PrettyPrinter\Standard;
 use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\Flow\Annotations as Flow;
 
-class PackageClassRewrite extends AbstractTransformation {
+class PackageClassRewrite extends AbstractTransformation implements Progressible {
+
+	use ProgressibleTrait;
 
 	/**
-	 * @var \TYPO3\Flow\Object\ObjectManagerInterface
+	 * @var \PhpParser\Parser
 	 * @Flow\Inject
 	 */
-	protected $objectManager;
+	protected $parser;
 
-	/** @var \PhpParser\Parser */
-	private $parser;
+	/**
+	 * @var \PhpParser\PrettyPrinterAbstract
+	 * @Flow\Inject
+	 */
+	protected $printer;
 
-	/** @var \PhpParser\PrettyPrinterAbstract */
-	private $printer;
-
-	/** @var \PhpParser\NodeTraverser */
-	private $traverser;
-
-	public function initializeObject() {
-		$this->parser  = new Parser(new Lexer());
-		$this->printer = new Standard();
-	}
+	/**
+	 * @var \PhpParser\NodeTraverser
+	 * @Flow\Inject
+	 */
+	protected $traverser;
 
 	public function execute(MorphConfiguration $configuration, MorphExecutionState $state, OutputInterface $out) {
 		$classMappingContainer = $configuration->getClassMappingContainer();
+		$taskQueue             = new TaskQueue();
 
-		$taskQueue = new TaskQueue();
-
-		$this->traverser = new NodeTraverser();
 		$this->traverser->addVisitor(new NameResolver());
 
 		foreach ($this->settings['visitors'] as $visitorClass) {
@@ -51,7 +49,8 @@ class PackageClassRewrite extends AbstractTransformation {
 			}
 
 			/** @var \Mw\Metamorph\Transformation\RewriteNodeVisitors\AbstractVisitor $visitor */
-			$visitor = $this->objectManager->get($visitorClass);
+			$visitor = new $visitorClass();
+			$visitor->setMorphConfiguration($configuration);
 			$visitor->setClassMap($classMappingContainer);
 			$visitor->setDeferredTaskQueue($taskQueue);
 
@@ -59,11 +58,16 @@ class PackageClassRewrite extends AbstractTransformation {
 			$this->log('Adding node visitor <info>%s</info>.', [$visitorClass]);
 		}
 
+		$this->startProgress('Refactoring classes', count($classMappingContainer->getClassMappings()));
 		foreach ($classMappingContainer->getClassMappings() as $classMapping) {
 			$this->refactorClass($classMapping, $out);
+			$this->advanceProgress();
 		}
+		$this->finishProgress();
 
-		$taskQueue->executeAll($configuration, function ($m) { $this->log($m); });
+		$this->startProgress('Cleaning up', 0);
+		$taskQueue->executeAll($configuration, function ($m) { $this->advanceProgress(); });
+		$this->finishProgress();
 	}
 
 	private function refactorClass(ClassMapping $classMapping, OutputInterface $out) {

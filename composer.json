@@ -4,10 +4,10 @@
     "description": "Convert TYPO3 CMS extensions to TYPO3 Flow packages",
     "license": "MIT",
     "require": {
-        "typo3/flow": "*",
+        "typo3/flow": ">= 2.3.0",
         "nikic/php-parser": "dev-master",
         "symfony/console": ">= 2.5",
-        "gitonomy/gitlib": "*",
+        "gitonomy/gitlib": "dev-master",
         "mittwald-typo3/flow-t3compat": "*",
         "helmich/flow-eventbroker": "*",
         "helmich/php-evaluator": "dev-master",

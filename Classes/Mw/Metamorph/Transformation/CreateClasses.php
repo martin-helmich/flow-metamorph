@@ -13,7 +13,9 @@ use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Package\PackageInterface;
 use TYPO3\Flow\Utility\Files;
 
-class CreateClasses extends AbstractTransformation {
+class CreateClasses extends AbstractTransformation implements Progressible {
+
+	use ProgressibleTrait;
 
 	/**
 	 * @var \TYPO3\Flow\Package\PackageManagerInterface
@@ -30,6 +32,8 @@ class CreateClasses extends AbstractTransformation {
 	public function execute(MorphConfiguration $configuration, MorphExecutionState $state, OutputInterface $out) {
 		$classMappingContainer    = $configuration->getClassMappingContainer();
 		$modifiedFilesForPackages = [];
+
+		$this->startProgress('Migrating classes', count($classMappingContainer->getClassMappings()));
 
 		foreach ($classMappingContainer->getClassMappings() as $classMapping) {
 			if ($classMapping->getAction() !== ClassMapping::ACTION_MORPH) {
@@ -55,8 +59,10 @@ class CreateClasses extends AbstractTransformation {
 				$absoluteFilename,
 				strlen($package->getPackagePath())
 			);
+			$this->advanceProgress();
 		}
 
+		$this->finishProgress();
 		$this->morphRepository->update($configuration);
 
 		foreach ($modifiedFilesForPackages as $package => $files) {

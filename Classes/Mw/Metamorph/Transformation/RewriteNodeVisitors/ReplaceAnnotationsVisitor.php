@@ -21,51 +21,41 @@ class ReplaceAnnotationsVisitor extends AbstractVisitor {
 
 	public function __construct() {
 		// @formatter:off
-        $this->annotationMapping = [
-            '/@inject/' => '@Flow\\Inject',
+		$this->annotationMapping = [
+			'/@inject/' => '@Flow\\Inject',
+			'/@validate[ ]+(?:\$?(?<var>[a-zA-Z0-9_]+)[ ]+)?(?<type>[A-Za-z_\\\\]+)(?:\((?<options>.*)\))?/' => function (array $m) {
+				$renderer = new AnnotationRenderer('Flow', 'Validate');
+				$renderer->addParameter('type', $m['type']);
 
-            '/@validate[ ]+(?:\$?(?<var>[a-zA-Z0-9_]+)[ ]+)?(?<type>[A-Za-z_\\\\]+)(?:\((?<options>.*)\))?/' => function(array $m)
-            {
-                $renderer = new AnnotationRenderer('Flow', 'Validate');
-                $renderer->addParameter('type', $m['type']);
+				if (isset($m['var']) && strlen($m['var']) > 0) {
+					$renderer->addParameter('argumentName', $m['var']);
+				}
 
-                if (isset($m['var']) && strlen($m['var']) > 0)
-                {
-                    $renderer->addParameter('argumentName', $m['var']);
-                }
+				if (isset($m['options'])) {
+					$renderer->addParameter('options', (new OptionParser($m['options']))->getValues());
+				}
 
-                if (isset($m['options']))
-                {
-                    $renderer->addParameter('options', (new OptionParser($m['options']))->getValues());
-                }
+				return $renderer->render();
+			},
+			'/@dontvalidatehmac/' => '@Flow\\SkipCsrfProtection',
+			'/@dontvalidate(?:\s+\$?(?<var>.+))?/' => function (array $m) {
+				$renderer = new AnnotationRenderer('Flow', 'IgnoreValidation');
 
-                return $renderer->render();
-            },
+				if (isset($m['var'])) {
+					$renderer->addParameter('argumentName', $m['var']);
+				}
 
-            '/@dontvalidatehmac/' => '@Flow\\SkipCsrfProtection',
-            '/@dontvalidate(?:\s+\$?(?<var>.+))?/' => function(array $m)
-            {
-                $renderer = new AnnotationRenderer('Flow', 'IgnoreValidation');
-
-                if (isset($m['var']))
-                {
-                    $renderer->addParameter('argumentName', $m['var']);
-                }
-
-                return $renderer->render();
-            },
-
-            '/@scope\s+(?<scope>singleton|prototype)/' => function (array $m)
-            {
-                return (new AnnotationRenderer('Flow', 'Scope'))
-                    ->setArgument($m['scope'])
-                    ->render();
-            },
-
-            '/@dontverifyrequesthash/' => '@Flow\\SkipCsrfProtection',
-            '/@lazy/' => '@Flow\\Lazy'
-        ];
-        // @formatter:on
+				return $renderer->render();
+			},
+			'/@scope\s+(?<scope>singleton|prototype)/' => function (array $m) {
+				return (new AnnotationRenderer('Flow', 'Scope'))
+					->setArgument($m['scope'])
+					->render();
+			},
+			'/@dontverifyrequesthash/' => '@Flow\\SkipCsrfProtection',
+			'/@lazy/' => '@Flow\\Lazy'
+		];
+		// @formatter:on
 	}
 
 	public function enterNode(Node $node) {
