@@ -2,6 +2,7 @@
 namespace Mw\Metamorph\Transformation;
 
 
+use Mw\Metamorph\Domain\Event\TargetPackageFileModifiedEvent;
 use Mw\Metamorph\Domain\Model\MorphConfiguration;
 use Mw\Metamorph\Domain\Model\State\ClassMapping;
 use Mw\Metamorph\Domain\Service\MorphExecutionState;
@@ -93,4 +94,12 @@ class PackageClassRewrite extends AbstractTransformation
 
         file_put_contents($classMapping->getTargetFile(), $this->printer->prettyPrintFile($syntaxTree));
     }
+
+
+
+    /**
+     * @param TargetPackageFileModifiedEvent $event
+     * @Event\Event
+     */
+    protected function emitFilesModifiedEvent(TargetPackageFileModifiedEvent $event) { }
 }

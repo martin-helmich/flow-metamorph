@@ -11,7 +11,7 @@ use Mw\Metamorph\Scm\BackendLocator;
 use TYPO3\Flow\Annotations as Flow;
 
 
-class ScmSynchronizationListener
+class ConfigurationScmSynchronizationListener
 {
 
 

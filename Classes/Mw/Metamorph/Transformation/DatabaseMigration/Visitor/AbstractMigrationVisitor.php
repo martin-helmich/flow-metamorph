@@ -119,6 +119,9 @@ class AbstractMigrationVisitor extends NodeVisitorAbstract
                 $comment = $node->getDocComment();
                 if (NULL != $comment)
                 {
+                    $this->currentClass->setFact('isEntity', FALSE);
+                    $this->currentClass->setFact('isValueObject', FALSE);
+
                     $this->commentHelper->removeAnnotationFromDocComment($comment, '@Flow\\Entity');
                     $this->commentHelper->removeAnnotationFromDocComment($comment, '@Flow\\ValueObject');
                 }

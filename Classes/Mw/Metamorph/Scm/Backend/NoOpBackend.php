@@ -20,4 +20,8 @@ class NoOpBackend implements ScmBackendInterface
 
 
 
+    public function checkoutBranch($directory, $branch) { }
+
+
+
 }

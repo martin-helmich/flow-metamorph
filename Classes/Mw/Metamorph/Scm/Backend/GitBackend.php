@@ -80,6 +80,16 @@ class GitBackend implements ScmBackendInterface
 
 
 
+    public function checkoutBranch($directory, $branch)
+    {
+        $repo = $this->getRepository($directory);
+        $work = $repo->getWorkingCopy();
+
+        $work->checkout($branch);
+    }
+
+
+
     /**
      * @param string $directory
      * @return Repository

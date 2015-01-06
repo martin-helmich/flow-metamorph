@@ -2,7 +2,9 @@
 namespace Mw\Metamorph\Transformation;
 
 
+use Helmich\EventBroker\Annotations as Event;
 use Helmich\Scalars\Types\String;
+use Mw\Metamorph\Domain\Event\TargetPackageFileModifiedEvent;
 use Mw\Metamorph\Domain\Model\MorphConfiguration;
 use Mw\Metamorph\Domain\Model\State\ClassMapping;
 use Mw\Metamorph\Domain\Repository\MorphConfigurationRepository;
@@ -35,8 +37,8 @@ class CreateClasses extends AbstractTransformation
 
     public function execute(MorphConfiguration $configuration, MorphExecutionState $state, OutputInterface $out)
     {
-        $classMappingContainer = $configuration->getClassMappingContainer();
-        $packageClassCount     = [];
+        $classMappingContainer    = $configuration->getClassMappingContainer();
+        $modifiedFilesForPackages = [];
 
         foreach ($classMappingContainer->getClassMappings() as $classMapping)
         {
@@ -53,23 +55,37 @@ class CreateClasses extends AbstractTransformation
             $absoluteFilename = $this->getAbsoluteFilename($relativeFilename, $package);
 
             Files::createDirectoryRecursively(dirname($absoluteFilename));
-
             file_put_contents($absoluteFilename, $source);
 
-            if (!isset($packageClassCount[$package->getPackageKey()]))
-            {
-                $packageClassCount[$package->getPackageKey()] = 0;
-            }
-            $packageClassCount[$package->getPackageKey()]++;
-
             $classMapping->setTargetFile($absoluteFilename);
+
+            if (!isset($modifiedFilesForPackages[$package->getPackageKey()]))
+            {
+                $modifiedFilesForPackages[$package->getPackageKey()] = [];
+            }
+            $modifiedFilesForPackages[$package->getPackageKey()][] = substr(
+                $absoluteFilename,
+                strlen($package->getPackagePath())
+            );
         }
 
         $this->morphRepository->update($configuration);
 
-        foreach ($packageClassCount as $package => $count)
+        foreach ($modifiedFilesForPackages as $package => $files)
         {
-            $this->log('<comment>%d</comment> classes written to package <comment>%s</comment>.', [$count, $package]);
+            $this->log(
+                '<comment>%d</comment> classes written to package <comment>%s</comment>.',
+                [count($files), $package]
+            );
+
+            $this->emitFilesModifiedEvent(
+                new TargetPackageFileModifiedEvent(
+                    $configuration,
+                    $this->packageManager->getPackage($package),
+                    $files,
+                    'Migrate classes from source extension'
+                )
+            );
         }
     }
 
@@ -99,7 +115,11 @@ class CreateClasses extends AbstractTransformation
     {
         if (FALSE === $this->isClassTestCase($relativeFilename))
         {
-            return $package->getClassesPath() . '/' . $relativeFilename;
+            return (new String($package->getClassesPath()))
+                ->stripRight('/')
+                ->append('/')
+                ->append($relativeFilename)
+                ->toPrimitive();
         }
         else
         {
@@ -115,4 +135,12 @@ class CreateClasses extends AbstractTransformation
                 ->toPrimitive();
         }
     }
+
+
+
+    /**
+     * @param TargetPackageFileModifiedEvent $event
+     * @Event\Event
+     */
+    protected function emitFilesModifiedEvent(TargetPackageFileModifiedEvent $event) { }
 }

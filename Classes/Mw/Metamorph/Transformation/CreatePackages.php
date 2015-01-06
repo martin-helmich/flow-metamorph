@@ -2,13 +2,14 @@
 namespace Mw\Metamorph\Transformation;
 
 
+use Mw\Metamorph\Domain\Event\TargetPackageCreatedEvent;
 use Mw\Metamorph\Domain\Model\MorphConfiguration;
 use Mw\Metamorph\Domain\Model\State\PackageMapping;
 use Mw\Metamorph\Domain\Service\MorphExecutionState;
 use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Flow\Package\MetaData;
-
+use Helmich\EventBroker\Annotations as Event;
 
 
 class CreatePackages extends AbstractTransformation
@@ -33,12 +34,15 @@ class CreatePackages extends AbstractTransformation
         {
             if (FALSE === $this->packageManager->isPackageAvailable($packageMapping->getPackageKey()))
             {
-                $this->packageManager->createPackage(
+                $package = $this->packageManager->createPackage(
                     $packageMapping->getPackageKey(),
                     $this->createPackageMetaData($packageMapping),
                     NULL,
                     'typo3-flow-package'
                 );
+
+                $this->emitCreatedEvent(new TargetPackageCreatedEvent($configuration, $package));
+
                 $this->log(
                     'PKG:<comment>%s</comment>: <fg=green>CREATED</fg=green>',
                     [$packageMapping->getPackageKey()]
@@ -72,4 +76,12 @@ class CreatePackages extends AbstractTransformation
 
         return $metaData;
     }
+
+
+
+    /**
+     * @param TargetPackageCreatedEvent $event
+     * @Event\Event
+     */
+    protected function emitCreatedEvent(TargetPackageCreatedEvent $event) { }
 } 

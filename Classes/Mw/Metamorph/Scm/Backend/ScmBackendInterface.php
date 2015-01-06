@@ -19,4 +19,8 @@ interface ScmBackendInterface
     public function isModified($directory);
 
 
+
+    public function checkoutBranch($directory, $branch);
+
+
 }

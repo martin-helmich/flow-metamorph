@@ -2,6 +2,8 @@
 namespace Mw\Metamorph\Transformation;
 
 
+use Helmich\EventBroker\Annotations as Event;
+use Mw\Metamorph\Domain\Event\TargetPackageCleanupEvent;
 use Mw\Metamorph\Domain\Model\MorphConfiguration;
 use Mw\Metamorph\Domain\Service\MorphExecutionState;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -28,6 +30,9 @@ class CleanupPackages extends AbstractTransformation
             $packageKey = $packageMapping->getPackageKey();
             if ($this->packageManager->isPackageAvailable($packageKey))
             {
+                $package = $this->packageManager->getPackage($packageKey);
+
+                $this->emitCleanupEvent(new TargetPackageCleanupEvent($configuration, $package));
                 $this->log('PKG:<comment>%s</comment>: <fg=cyan>present</fg=cyan>', [$packageKey]);
             }
             else
@@ -36,4 +41,12 @@ class CleanupPackages extends AbstractTransformation
             }
         }
     }
+
+
+
+    /**
+     * @param TargetPackageCleanupEvent $event
+     * @Event\Event
+     */
+    protected function emitCleanupEvent(TargetPackageCleanupEvent $event) { }
 }
