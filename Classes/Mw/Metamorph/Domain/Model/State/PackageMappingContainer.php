@@ -9,9 +9,9 @@ use TYPO3\Flow\Annotations as Flow;
  *
  * @Flow\Scope("prototype")
  */
-class PackageMappingContainer {
+class PackageMappingContainer implements Reviewable {
 
-	use Reviewable;
+	use ReviewableTrait;
 
 	/** @var array<Mw\Metamorph\Domain\Model\State\PackageMapping> */
 	protected $packageMappings = [];
@@ -46,6 +46,17 @@ class PackageMappingContainer {
 		);
 	}
 
+	/**
+	 * @param string $action
+	 * @return PackageMapping[]
+	 */
+	public function getPackageMappingsByAction($action) {
+		$filter = function (PackageMapping $mapping) use ($action) {
+			return $mapping->getAction() === $action;
+		};
+		return $this->getPackageMappingsByFilter($filter);
+	}
+
 	public function getPackageMappingByFilter($callable) {
 		foreach ($this->packageMappings as $packageMapping) {
 			if (TRUE === call_user_func($callable, $packageMapping)) {
@@ -53,6 +64,20 @@ class PackageMappingContainer {
 			}
 		}
 		return NULL;
+	}
+
+	/**
+	 * @param callable $filter
+	 * @return PackageMapping[]
+	 */
+	public function getPackageMappingsByFilter(callable $filter) {
+		$found = [];
+		foreach ($this->packageMappings as $packageMapping) {
+			if (call_user_func($filter, $packageMapping)) {
+				$found[] = $packageMapping;
+			}
+		}
+		return $found;
 	}
 
 	public function removePackageMapping($extensionKey) {

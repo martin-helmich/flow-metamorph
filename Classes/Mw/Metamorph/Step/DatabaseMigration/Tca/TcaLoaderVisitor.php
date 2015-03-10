@@ -12,6 +12,7 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\Parser;
+use PhpParser\PrettyPrinter\Standard;
 use TYPO3\Flow\Annotations as Flow;
 
 class TcaLoaderVisitor extends NodeVisitorAbstract {
@@ -64,6 +65,9 @@ class TcaLoaderVisitor extends NodeVisitorAbstract {
 			]
 		);
 		$variables['GLOBALS'] = $variables;
+		$variables->setLookupFunction(function($name) {
+			return NULL;
+		});
 
 		$this->evaluator->setGlobalScope($variables);
 		$this->evaluator->setConstantStore(new ConstantStore());
@@ -128,8 +132,12 @@ class TcaLoaderVisitor extends NodeVisitorAbstract {
 		$keys = [];
 
 		while (!$left instanceof Node\Expr\Variable) {
-			$keys[] = $this->evaluator->evaluateExpression($left->dim);
-			$left   = $left->var;
+			if ($left->dim !== NULL) {
+				$keys[] = $this->evaluator->evaluateExpression($left->dim);
+			} else {
+				$keys[] = NULL;
+			}
+			$left = $left->var;
 		}
 
 		return [$left, $keys];

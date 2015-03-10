@@ -11,11 +11,11 @@ namespace Mw\Metamorph\Persistence\Mapping\State;
 use Mw\Metamorph\Domain\Event\MorphConfigurationFileModifiedEvent;
 use Mw\Metamorph\Domain\Model\MorphConfiguration;
 
-class ResourceMappingContainerWriter {
+class ResourceMappingContainerWriter implements ContainerWriterInterface {
 
 	use YamlStorable;
 
-	public function writeMorphResourceMapping(MorphConfiguration $morphConfiguration) {
+	public function writeMorphContainer(MorphConfiguration $morphConfiguration) {
 		$this->initializeWorkingDirectory($morphConfiguration->getName());
 
 		$resourceMappings = $morphConfiguration->getResourceMappingContainer();
@@ -28,10 +28,15 @@ class ResourceMappingContainerWriter {
 			];
 
 			if ($resourceMapping->getTargetFile()) {
-				$mapped['target'] = $resourceMapping->getTargetFile();
+				$mapped['target'] = $this->getTargetRelativePath(
+					$resourceMapping->getTargetFile(),
+					$resourceMapping->getPackage()
+				);
 			}
 
-			$data['resources'][$resourceMapping->getSourceFile()] = $mapped;
+			$sourceFile = $this->getSourceRelativePath($resourceMapping->getSourceFile(), $morphConfiguration);
+
+			$data['resources'][$sourceFile] = $mapped;
 		}
 
 		if (count($resourceMappings->getResourceMappings())) {
